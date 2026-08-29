@@ -1,6 +1,6 @@
 "use client";
 
-import RecipeView from "@/components/RecipeView";
+import RecipeView from "./components/RecipeView";
 
 import { useState, useRef } from "react";
 

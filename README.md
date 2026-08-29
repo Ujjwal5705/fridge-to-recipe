@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Fridge to Recipe
 
-## Getting Started
+Turn a list of ingredients you have on hand into a structured, interactive recipe — checkable steps, a servings scaler, and ingredient swap suggestions.
 
-First, run the development server:
+## Setup
+
+1. Clone the repo and install dependencies:
+```bash
+   npm install
+```
+2. Create a `.env.local` file in the project root:
+```text
+GROQ_API_KEY=your_groq_api_key_here
+```
+Get a free key at [console.groq.com](https://console.groq.com).
+3. Run the dev server:
+```bash
+   npm run dev
+```
+4. Open http://localhost:3000
+
+## How it works
+
+- The frontend sends the ingredients text to a Next.js API route (`app/api/generate-recipe/route.js`), keeping the Groq API key server-side only.
+- The API route prompts Groq (`llama-3.3-70b-versatile`) with a strict JSON schema and Groq's JSON mode enabled, then validates the response server-side (checks types, required fields, and array shapes) before ever sending it to the client.
+- If the AI call fails, returns malformed JSON, or returns JSON that doesn't match the expected recipe shape, the API returns a clean `{ error: "..." }` response instead of raw/broken data.
+- The frontend tracks loading, error, and success states, and uses a request-id counter to make sure a slow, stale response can never overwrite a newer one if the user resubmits quickly.
+- Once a valid recipe is received, `RecipeView` renders it as interactive components: a servings +/− control that scales ingredient amounts, checkable step items, and toggleable ingredient swap suggestions.
+
+## AI usage note
+
+I used Claude to help scaffold this project and talk through the architecture (Next.js API route structure, the JSON validation approach, and the stale-response guard pattern), and to write boilerplate Tailwind markup faster. I reviewed, tested, and understand all the code — [add any specifics: e.g. "I wrote the scaleAmount parsing logic changes myself after testing edge cases like 'to taste'" if applicable].
+
+## Known limitations
+
+- `scaleAmount` only scales amounts that start with a parseable number (e.g. "2 cups", "1/2 tsp"); text like "to taste" or "a pinch" is left unscaled by design, since there's nothing to reasonably scale.
+- No retry-with-backoff on AI failures — a failed request requires a manual "Try again" click rather than automatic retries.
+- No session persistence — refreshing the page loses the current recipe (this is listed as a stretch goal, not a requirement).
+- Only tested against Groq's `llama-3.3-70b-versatile`; other models may format amounts or swaps slightly differently.
+- [Add anything else you personally noticed while testing — e.g. any weird output you saw, any edge case ingredient list that produced odd results, etc.]
+
+## Time spent
+
+~1.5 hours total.
+
+## Running locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Requires a `GROQ_API_KEY` in `.env.local` as described above.
