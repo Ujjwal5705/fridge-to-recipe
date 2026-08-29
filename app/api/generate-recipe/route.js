@@ -20,6 +20,8 @@ The JSON must match this exact shape:
 
 Rules:
 - "servings" must be a number, default to 4 if not implied by context.
+- "amount" must contain ONLY the quantity and unit (e.g. "500g", "2 tbsp", "to taste"). NEVER include the ingredient's name or a description inside "amount" — that belongs only in "name".
+- "name" should be the ingredient itself, in a natural, singular-ish form (e.g. "chicken breast", "green chilli", "honey"), without the quantity in it.
 - Include a reasonable "swap" (a common substitute) for at least the main ingredients; use null if there isn't a good one.
 - "steps" must be ordered starting at 1.
 - You may include one or two pantry staples (salt, oil, water) not in the user's list if needed, but do not invent exotic ingredients.
