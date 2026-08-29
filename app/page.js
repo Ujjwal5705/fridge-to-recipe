@@ -1,5 +1,7 @@
 "use client";
 
+import RecipeView from "@/components/RecipeView";
+
 import { useState, useRef } from "react";
 
 export default function Home() {
@@ -107,11 +109,8 @@ export default function Home() {
             </div>
           )}
 
-          {status === "success" && recipe && (
-            <pre className="whitespace-pre-wrap text-xs bg-white p-4 rounded-lg border">
-              {JSON.stringify(recipe, null, 2)}
-            </pre>
-          )}
+          {status === "success" && recipe && <RecipeView recipe={recipe} />}
+          
         </div>
       </div>
     </main>
