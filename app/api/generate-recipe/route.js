@@ -29,16 +29,89 @@ export async function POST(request) {
   const body = await request.json();
   const ingredients = body.ingredients;
 
-  const completion = await groq.chat.completions.create({
-    model: "openai/gpt-oss-20b",
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: `Ingredients available: ${ingredients}` },
-    ],
-    response_format: { type: "json_object" },
-  });
+  if (!ingredients || typeof ingredients !== "string" || !ingredients.trim()) {
+    return Response.json(
+      { error: "Please enter at least one ingredient." },
+      { status: 400 },
+    );
+  }
 
-  const raw = completion.choices[0].message.content;
+  let completion;
+  try {
+    completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: `Ingredients available: ${ingredients}` },
+      ],
+      response_format: { type: "json_object" },
+    });
+  } catch (err) {
+    console.error("Groq API call failed:", err);
+    return Response.json(
+      { error: "The AI service failed to respond. Please try again." },
+      { status: 502 },
+    );
+  }
 
-  return Response.json({ raw });
+  const raw = completion.choices[0]?.message?.content;
+
+  if (!raw) {
+    return Response.json(
+      { error: "The AI returned an empty response." },
+      { status: 502 },
+    );
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    console.error("Failed to parse JSON from AI:", raw);
+    return Response.json(
+      { error: "The AI returned malformed data. Please try again." },
+      { status: 502 },
+    );
+  }
+
+  const validationError = validateRecipeShape(parsed);
+  if (validationError) {
+    console.error("Recipe failed validation:", validationError, parsed);
+    return Response.json(
+      {
+        error: `The AI returned unexpected data (${validationError}). Please try again.`,
+      },
+      { status: 502 },
+    );
+  }
+
+  return Response.json({ recipe: parsed });
+}
+
+function validateRecipeShape(data) {
+  if (typeof data !== "object" || data === null) return "not an object";
+  if (typeof data.title !== "string" || !data.title.trim())
+    return "missing title";
+  if (typeof data.servings !== "number" || data.servings <= 0)
+    return "invalid servings";
+
+  if (!Array.isArray(data.ingredients) || data.ingredients.length === 0)
+    return "missing ingredients list";
+  for (const ing of data.ingredients) {
+    if (typeof ing.name !== "string" || !ing.name.trim())
+      return "ingredient missing name";
+    if (typeof ing.amount !== "string") return "ingredient missing amount";
+    if (ing.swap !== null && typeof ing.swap !== "string")
+      return "invalid swap value";
+  }
+
+  if (!Array.isArray(data.steps) || data.steps.length === 0)
+    return "missing steps list";
+  for (const step of data.steps) {
+    if (typeof step.order !== "number") return "step missing order";
+    if (typeof step.instruction !== "string" || !step.instruction.trim())
+      return "step missing instruction";
+  }
+
+  return null; // valid
 }
