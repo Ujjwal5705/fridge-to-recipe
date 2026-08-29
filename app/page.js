@@ -1,9 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 export default function Home() {
   const [ingredients, setIngredients] = useState("");
+  const [status, setStatus] = useState("idle");
+  const [recipe, setRecipe] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const latestRequestId = useRef(0);
+
+  async function handleGenerate() {
+    if (!ingredients.trim()) return;
+
+    const requestId = ++latestRequestId.current;
+    setStatus("loading");
+    setErrorMessage("");
+
+    try {
+      const res = await fetch("/api/generate-recipe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ingredients }),
+      });
+
+      const data = await res.json();
+
+      if (requestId !== latestRequestId.current) return;
+
+      if (!res.ok || data.error) {
+        setStatus("error");
+        setErrorMessage(
+          data.error || "Something went wrong. Please try again.",
+        );
+        return;
+      }
+
+      setRecipe(data.recipe);
+      setStatus("success");
+    } catch (err) {
+      if (requestId !== latestRequestId.current) return;
+      setStatus("error");
+      setErrorMessage(
+        "Couldn't reach the server. Check your connection and try again.",
+      );
+    }
+  }
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-8 sm:py-12">
@@ -32,10 +74,44 @@ export default function Home() {
           />
           <button
             type="button"
+            onClick={handleGenerate}
+            disabled={status === "loading" || !ingredients.trim()}
             className="mt-3 w-full sm:w-auto rounded-lg bg-blue-600 px-5 py-2.5 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
           >
-            Generate Recipe
+            {status === "loading" ? "Generating..." : "Generate Recipe"}
           </button>
+        </div>
+
+        <div className="mt-8">
+          {status === "idle" && (
+            <p className="text-gray-400 text-sm">
+              Your recipe will appear here once you generate one.
+            </p>
+          )}
+
+          {status === "loading" && (
+            <p className="text-gray-500 text-sm animate-pulse">
+              Cooking up a recipe from your ingredients...
+            </p>
+          )}
+
+          {status === "error" && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <p className="text-red-700 text-sm">{errorMessage}</p>
+              <button
+                onClick={handleGenerate}
+                className="mt-2 text-sm font-medium text-red-700 underline"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {status === "success" && recipe && (
+            <pre className="whitespace-pre-wrap text-xs bg-white p-4 rounded-lg border">
+              {JSON.stringify(recipe, null, 2)}
+            </pre>
+          )}
         </div>
       </div>
     </main>
